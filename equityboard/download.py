@@ -5,6 +5,7 @@ import os
 from tqdm import tqdm
 import logging
 from time import sleep
+from pkg_resources import resource_stream
 
 logging.basicConfig(level=logging.DEBUG,
                     filename='log_download.txt',
@@ -101,7 +102,10 @@ def us_tickers() -> pd.DataFrame:
     """Returns a list of US-listed companies tickers."""
     fname = os.path.join('resources',
                          'nasdaq_screener_1618019870209.csv')
-    df = pd.read_csv(fname, header=0, index_col=0)
+    df = pd.read_csv(
+        resource_stream('resources', 'nasdaq_screener_1618019870209.csv'),
+        header=0, index_col=0
+    )
     return df
 
 

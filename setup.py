@@ -32,5 +32,11 @@ setuptools.setup(
         "tqdm",
         "pyarrow",
         "gunicorn",
-    ]
+    ],
+    package_data={
+        'resources': [
+            'nasdaq_screener_1618019870209.csv',
+            'stock_closes.pq',
+        ],
+    },
 )

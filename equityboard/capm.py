@@ -5,10 +5,13 @@ from datetime import date, timedelta
 from scipy.optimize import minimize, LinearConstraint
 import matplotlib.pyplot as plt
 import os
+from pkg_resources import resource_stream
 
 
 def stock_prices():
-    df = pd.read_parquet(os.path.join('resources', 'stock_closes.pq'))
+    df = pd.read_parquet(
+        resource_stream('resources', 'stock_closes.pq')
+    )
     df = df.interpolate(method='backfill', axis=0)
     full_index = pd.date_range(df.index.min(), df.index.max(), freq='D')
     ser = pd.Series(range(len(full_index)), index=full_index, name='dummy')
