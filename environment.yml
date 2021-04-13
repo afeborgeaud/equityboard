@@ -1,0 +1,17 @@
+name: eqboard
+chanels:
+  - conda-forge
+  - defaults
+  - anaconda
+dependencies:
+  - python=3.9
+  - requests
+  - numpy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - dash
+  - plotly
+  - pywavelets
+  - tqdm
+  - pyarrow
