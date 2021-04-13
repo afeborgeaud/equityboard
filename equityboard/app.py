@@ -5,53 +5,49 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from capm import capm, efficient_frontier, profit, stock_prices, daily_return
+from capm import risk
+from download import us_tickers
 import numpy as np
 from datetime import date
 
 
-def chart(df: pd.DataFrame, tickers: list[str]) -> None:
-    fig = px.line(df, y=tickers,
+def chart(df_profit: pd.DataFrame, tickers: list[str]) -> None:
+    fig = px.line(df_profit, y=tickers,
                   labels={'value': 'Return (%)'},
                   )
-    fig.update_layout(
-        # plot_bgcolor=colors['background'],
-        # paper_bgcolor=colors['background'],
-        font_color=colors['text'],
-    )
+    # fig.update_layout(
+    #     plot_bgcolor=colors['background'],
+    #     paper_bgcolor=colors['background'],
+    #     font_color=colors['text'],
+    # )
     return fig
 
 
 def capm_scatter(
-        df: pd.DataFrame, df_daily,
+        df_daily: pd.DataFrame, risk: pd.Series, profit: pd.Series,
         from_day, to_day, tickers: list[str]) -> None:
-    df_capm_filt = capm(df[tickers], from_day, to_day)
+    df_capm = capm(risk, profit)
     res = None
 
     if len(tickers) > 1:
-        profits = profit(df[tickers], from_day, to_day).iloc[-1].to_numpy()
-
-        n_year = (date.fromisoformat(to_day) - date.fromisoformat(
-            from_day)).days / 365.
-        profits_ann = np.abs(profits) ** (1. / n_year) * np.sign(profits)
-
-        target_profits = np.linspace(max(0., profits_ann.min()),
-                                     profits_ann.max(), 10)
+        target_profits = np.linspace(max(0., profit.min()),
+                                     profit.max(), 10)
 
         res = efficient_frontier(
-            df_daily[tickers], profits, target_profits, from_day, to_day)
+            df_daily[tickers], profit, target_profits, from_day, to_day)
 
     if res is not None:
         weights, risks, profits = res
 
     fig = px.scatter(
-        df_capm_filt, x='risk', y='return',
-        color=df_capm_filt.index.tolist(),
+        df_capm.loc[tickers], x='risk', y='return',
+        color=df_capm.index.tolist(),
         size=np.ones(len(tickers)),
         size_max=10,
         labels={'risk': 'Annualized risk',
                 'return': 'Annualized return (%)',
                 'color': 'Symbol'},
-        hover_name=df_capm_filt.index.tolist(),
+        hover_name=df_capm.index.tolist(),
         hover_data={'return': True,
                      'risk': True,
                      'Name': True,
@@ -74,11 +70,11 @@ def capm_scatter(
             go.Scatter(x=risks, y=profits, mode='lines',
                        name='eff. front.')
         )
-    fig.update_layout(
-        # plot_bgcolor=colors['background'],
-        # paper_bgcolor=colors['background'],
-        font_color=colors['text'],
-    )
+    # fig.update_layout(
+    #     plot_bgcolor=colors['background'],
+    #     paper_bgcolor=colors['background'],
+    #     font_color=colors['text'],
+    # )
     return fig
 
 
@@ -94,17 +90,13 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 server = app.server
 
-df = stock_prices()
+# global variables
 iso_fmt = '%Y-%m-%d'
-df_daily = daily_return(df,
-                        df.index[1].strftime(iso_fmt),
-                        df.index[-1].strftime(iso_fmt))
-# df_daily = daily_return(df, '1990-01-03', '2021-04-01')
+all_tickers = us_tickers().index.tolist()
 
+# initial state
 range_init = ['2020-01-01', '2021-04-09']
-# tickers_init = ['AAPL', 'AAL', 'ABBV']
-tickers_init = ['AAPL']
-
+tickers_init = ['AAPL'] # ['AAPL', 'AAL', 'ABBV']
 
 app.layout = html.Div(children=[
     dcc.Markdown('''
@@ -118,7 +110,7 @@ app.layout = html.Div(children=[
                     id='dd-chart-ticker',
                     options=[
                         {'label': t, 'value': t}
-                        for t in df.columns
+                        for t in all_tickers
                     ],
                     value=tickers_init,
                     multi=True,
@@ -156,8 +148,8 @@ app.layout = html.Div(children=[
     html.Div([
         dcc.Graph(
             id='g-chart',
-            figure=chart(profit(df, range_init[0], range_init[1]),
-                         tickers_init)
+            # figure=chart(profit(df, range_init[0], range_init[1]),
+            #              tickers_init)
         ),
     ], style={'width': '49%', 'float': 'left', 'display': 'inline-block'}
     ),
@@ -174,16 +166,6 @@ app.layout = html.Div(children=[
 
 @app.callback(
     dash.dependencies.Output('g-chart', 'figure'),
-    dash.dependencies.Input('dd-chart-ticker', 'value'),
-    dash.dependencies.Input('bt-range', 'n_clicks'),
-    dash.dependencies.State('in-text-from', 'value'),
-    dash.dependencies.State('in-text-to', 'value'),
-)
-def update_output(tickers, n_clicks, from_day, to_day):
-    df_profit = profit(df, from_day, to_day)
-    return chart(df_profit, tickers)
-
-@app.callback(
     dash.dependencies.Output('g-capm', 'figure'),
     dash.dependencies.Input('dd-chart-ticker', 'value'),
     dash.dependencies.Input('bt-range', 'n_clicks'),
@@ -191,7 +173,30 @@ def update_output(tickers, n_clicks, from_day, to_day):
     dash.dependencies.State('in-text-to', 'value'),
 )
 def update_output(tickers, n_clicks, from_day, to_day):
-    return capm_scatter(df, df_daily, from_day, to_day, tickers)
+    df = stock_prices(tickers)
+    df_daily = daily_return(df,
+                            df.index[1].strftime(iso_fmt),
+                            df.index[-1].strftime(iso_fmt))
+    df_profit = profit(df, from_day, to_day)
+    ser_risk = risk(df_daily, from_day, to_day)
+    ser_profit = df_profit.iloc[-1]
+    ser_profit.name = 'return'
+    return [
+        chart(df_profit, tickers),
+        capm_scatter(
+            df_daily, ser_risk, ser_profit,
+            from_day, to_day, tickers)
+    ]
+
+# @app.callback(
+#     dash.dependencies.Output('g-capm', 'figure'),
+#     dash.dependencies.Input('dd-chart-ticker', 'value'),
+#     dash.dependencies.Input('bt-range', 'n_clicks'),
+#     dash.dependencies.State('in-text-from', 'value'),
+#     dash.dependencies.State('in-text-to', 'value'),
+# )
+# def update_output(tickers, n_clicks, from_day, to_day):
+#     return capm_scatter(df, df_daily, from_day, to_day, tickers)
 
 
 if __name__ == '__main__':

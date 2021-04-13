@@ -8,9 +8,10 @@ import os
 from pkg_resources import resource_stream
 
 
-def stock_prices():
+def stock_prices(tickers=None):
     df = pd.read_parquet(
-        resource_stream('resources', 'stock_closes_2016.pq')
+        resource_stream('resources', 'stock_closes_2016.pq'),
+        columns=tickers
     )
     df = df.interpolate(method='backfill', axis=0)
     full_index = pd.date_range(df.index.min(), df.index.max(), freq='D')
@@ -24,40 +25,28 @@ def stock_prices():
 
 
 def risk(
-        df: pd.DataFrame, from_day: str, to_day: str,
+        df_daily: pd.DataFrame, from_day: str, to_day: str,
         annual=True) -> pd.Series:
-    df = df.interpolate(method='backfill', axis=0)  # TODO change to lambda
-    df_daily = daily_return(df, from_day, to_day)
-    df_daily = df_daily - df_daily.mean(axis=0)
-    r = np.sqrt(df_daily.var(axis=0))
+    r = (df_daily - df_daily.mean(axis=0)).var(axis=0)
     r.name = 'risk'
     if annual:
         n_year = (date.fromisoformat(to_day) - date.fromisoformat(
             from_day)).days / 365.
-        r = r / annual
-    return r
-
-
-def returns(
-        df: pd.DataFrame, from_day: str, to_day: str,
-        annual=True) -> pd.Series:
-    # day0 = max(pd.Timestamp(date.fromisoformat(from_day)),
-    #     df.index[0])
-    df = df.interpolate(method='backfill', axis=0) #TODO change to lambda
-    r = (df.loc[to_day] - df.loc[from_day]) / df.loc[from_day] * 100
-    r.name = 'return'
-    if annual:
-        n_year = (date.fromisoformat(to_day) - date.fromisoformat(
-            from_day)).days / 365.
-        r = r.abs().pow(1. / n_year) * np.sign(r)
+        r = r / n_year
     return r
 
 
 def profit(
-        df: pd.DataFrame, from_day: str, to_day: str) -> pd.DataFrame:
-    df_profit = (df.interpolate(method='backfill', axis=0) # TODO use lambda
+        df: pd.DataFrame, from_day: str, to_day: str,
+        annual=True) -> pd.DataFrame:
+    # TODO use lambda
+    df_profit = (df[from_day:to_day].interpolate(method='backfill', axis=0)
                  .subtract(df.loc[from_day], axis=1)
                  .divide(df.loc[from_day], axis=1)) * 100.
+    if annual:
+        n_year = (date.fromisoformat(to_day) - date.fromisoformat(
+            from_day)).days / 365.
+        df_profit = df_profit / n_year
     return df_profit[from_day:to_day]
 
 
@@ -72,10 +61,8 @@ def daily_return(df, from_day, to_day):
 
 
 def capm(
-        df: pd.DataFrame, from_day: str, to_day: str) -> pd.DataFrame:
-    ret = returns(df, from_day, to_day)
-    ris = risk(df, from_day, to_day)
-    df = pd.concat([ris, ret], axis=1, join='inner')
+        risk: pd.Series, profit: pd.Series) -> pd.Series:
+    df = pd.concat([risk, profit], axis=1, join='inner')
     df_ticker = us_tickers()
     df_ticker.index.name = 'Symbol'
     df.index.name = 'Symbol'
@@ -85,36 +72,29 @@ def capm(
 
 
 def efficient_frontier(
-        df_daily, profits, target_profits, from_day, to_day,
+        df_daily: pd.DataFrame, profits: pd.Series,
+        target_profits: np.array, from_day: str, to_day: str,
         annual=True):
     def total_risk(weights):
         df = df_daily[from_day:to_day] - df_daily[from_day:to_day].mean(axis=0)
-        # print(df.head())
         return np.sqrt(
             np.sum(
                 (df.to_numpy() * weights.reshape(1, -1)),
                 axis=1)
             .var())
 
-    if len(df_daily.columns) == 1:
+    n_ticker = len(df_daily.columns)
+    if n_ticker == 1:
         return None
 
-    if annual:
-        n_year = (date.fromisoformat(to_day) - date.fromisoformat(
-            from_day)).days / 365.
-        profits_ann = np.abs(profits) ** (1. / n_year) * np.sign(profits)
-    else:
-        profits_ann = profits
-
-    n = len(profits_ann)
-    C1 = profits_ann.reshape(1, -1)
-    C2 = np.ones((1, n), dtype='float')
+    C1 = profits.to_numpy().reshape(1, -1)
+    C2 = np.ones((1, n_ticker), dtype='float')
     lc1 = None
     lc2 = LinearConstraint(C2, 1., 1.)
-    bounds = [(0., 1.) for i in range(n)]
-    w0 = np.ones(n, dtype='float') / n
+    bounds = [(0., 1.) for i in range(n_ticker)]
+    w0 = np.ones(n_ticker, dtype='float') / n_ticker
 
-    weights = np.zeros((len(target_profits), n), dtype='float')
+    weights = np.zeros((len(target_profits), n_ticker), dtype='float')
     total_risks = np.zeros(len(target_profits), dtype='float')
     max_it = 3
     for i, target_profit in enumerate(target_profits):
@@ -128,9 +108,11 @@ def efficient_frontier(
         # print(res)
         weights[i] = res.x
         total_risks[i] = total_risk(weights[i])
-    total_profits = np.dot(weights, profits_ann)
+    total_profits = np.dot(weights, profits.to_numpy())
 
     if annual:
+        n_year = (date.fromisoformat(to_day) - date.fromisoformat(
+            from_day)).days / 365.
         total_risks = total_risks ** (1. / n_year)
 
     return weights, total_risks, total_profits
