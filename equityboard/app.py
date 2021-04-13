@@ -101,6 +101,8 @@ df_daily = daily_return(df,
 range_init = ['2020-01-01', '2021-04-01']
 tickers_init = ['AAPL', 'AAL', 'ABBV']
 
+server = app.server
+
 app.layout = html.Div(children=[
     dcc.Markdown('''
         # Capital Asset Pricing Model (CAPM)
