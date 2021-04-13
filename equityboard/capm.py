@@ -10,7 +10,7 @@ from pkg_resources import resource_stream
 
 def stock_prices():
     df = pd.read_parquet(
-        resource_stream('resources', 'stock_closes.pq')
+        resource_stream('resources', 'stock_closes_2016.pq')
     )
     df = df.interpolate(method='backfill', axis=0)
     full_index = pd.date_range(df.index.min(), df.index.max(), freq='D')
