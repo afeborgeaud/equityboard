@@ -1,6 +1,6 @@
 **__pycache__
 .idea
-equityboard/log_download.txt
+**log_download.txt
 **egg-info
 *.pyc
 .DS_Store

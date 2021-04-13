@@ -6,8 +6,8 @@ import os
 if __name__ == '__main__':
     # h = hpy()
     df = stock_prices()
-    print(df.info())
-    df_2016 = df['2016':]
-    print(df_2016.info())
-    df_2016.to_parquet('stock_closes_2016.pq')
+    print(df.head())
+    # df_2016 = df['2016':]
+    # print(df_2016.info())
+    # df.to_parquet('stock_closes_2016.pq')
     # h.heap()

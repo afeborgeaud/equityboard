@@ -24,21 +24,22 @@ def chart(df: pd.DataFrame, tickers: list[str]) -> None:
 def capm_scatter(
         df: pd.DataFrame, df_daily,
         from_day, to_day, tickers: list[str]) -> None:
-    # df_capm = capm(df, from_day, to_day)
-    # df_capm.reset_index(inplace=True)
-    # df_capm_filt = df_capm.loc[tickers]
     df_capm_filt = capm(df[tickers], from_day, to_day)
-    profits = profit(df[tickers], from_day, to_day).iloc[-1].to_numpy()
+    res = None
 
-    n_year = (date.fromisoformat(to_day) - date.fromisoformat(
-        from_day)).days / 365.
-    profits_ann = np.abs(profits) ** (1. / n_year) * np.sign(profits)
+    if len(tickers) > 1:
+        profits = profit(df[tickers], from_day, to_day).iloc[-1].to_numpy()
 
-    target_profits = np.linspace(max(0., profits_ann.min()),
-                                 profits_ann.max(), 10)
+        n_year = (date.fromisoformat(to_day) - date.fromisoformat(
+            from_day)).days / 365.
+        profits_ann = np.abs(profits) ** (1. / n_year) * np.sign(profits)
 
-    res = efficient_frontier(
-        df_daily[tickers], profits, target_profits, from_day, to_day)
+        target_profits = np.linspace(max(0., profits_ann.min()),
+                                     profits_ann.max(), 10)
+
+        res = efficient_frontier(
+            df_daily[tickers], profits, target_profits, from_day, to_day)
+
     if res is not None:
         weights, risks, profits = res
 
@@ -91,6 +92,8 @@ colors = {
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
+server = app.server
+
 df = stock_prices()
 iso_fmt = '%Y-%m-%d'
 df_daily = daily_return(df,
@@ -98,10 +101,10 @@ df_daily = daily_return(df,
                         df.index[-1].strftime(iso_fmt))
 # df_daily = daily_return(df, '1990-01-03', '2021-04-01')
 
-range_init = ['2020-01-01', '2021-04-01']
-tickers_init = ['AAPL', 'AAL', 'ABBV']
+range_init = ['2020-01-01', '2021-04-09']
+# tickers_init = ['AAPL', 'AAL', 'ABBV']
+tickers_init = ['AAPL']
 
-server = app.server
 
 app.layout = html.Div(children=[
     dcc.Markdown('''
