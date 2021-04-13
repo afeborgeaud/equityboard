@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from capm import capm, efficient_frontier, profit, stock_prices, daily_return
-from capm import risk
+from capm import risk, _n_year
 from download import us_tickers
 import numpy as np
 from datetime import date
@@ -27,12 +27,12 @@ def capm_scatter(
         df_daily: pd.DataFrame, risk: pd.Series, profit: pd.Series,
         from_day, to_day, tickers: list[str]) -> None:
     df_capm = capm(risk, profit)
+    print(profit.head())
     res = None
 
     if len(tickers) > 1:
         target_profits = np.linspace(max(0., profit.min()),
                                      profit.max(), 10)
-
         res = efficient_frontier(
             df_daily[tickers], profit, target_profits, from_day, to_day)
 
@@ -179,7 +179,10 @@ def update_output(tickers, n_clicks, from_day, to_day):
                             df.index[-1].strftime(iso_fmt))
     df_profit = profit(df, from_day, to_day)
     ser_risk = risk(df_daily, from_day, to_day)
+
     ser_profit = df_profit.iloc[-1]
+    n_year = _n_year(from_day, to_day)
+    ser_profit = ser_profit.abs().pow(1. / n_year) * np.sign(ser_profit)
     ser_profit.name = 'return'
     return [
         chart(df_profit, tickers),

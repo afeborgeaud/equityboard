@@ -24,29 +24,28 @@ def stock_prices(tickers=None):
     return df
 
 
+def _n_year(from_day: str, to_day: str) -> float:
+    return (date.fromisoformat(to_day) - date.fromisoformat(
+        from_day)).days / 365.
+
+
 def risk(
         df_daily: pd.DataFrame, from_day: str, to_day: str,
         annual=True) -> pd.Series:
     r = (df_daily - df_daily.mean(axis=0)).var(axis=0)
     r.name = 'risk'
     if annual:
-        n_year = (date.fromisoformat(to_day) - date.fromisoformat(
-            from_day)).days / 365.
+        n_year = _n_year(from_day, to_day)
         r = r / n_year
     return r
 
 
 def profit(
-        df: pd.DataFrame, from_day: str, to_day: str,
-        annual=True) -> pd.DataFrame:
+        df: pd.DataFrame, from_day: str, to_day: str) -> pd.DataFrame:
     # TODO use lambda
     df_profit = (df[from_day:to_day].interpolate(method='backfill', axis=0)
                  .subtract(df.loc[from_day], axis=1)
                  .divide(df.loc[from_day], axis=1)) * 100.
-    if annual:
-        n_year = (date.fromisoformat(to_day) - date.fromisoformat(
-            from_day)).days / 365.
-        df_profit = df_profit / n_year
     return df_profit[from_day:to_day]
 
 
@@ -81,7 +80,7 @@ def efficient_frontier(
             np.sum(
                 (df.to_numpy() * weights.reshape(1, -1)),
                 axis=1)
-            .var())
+            .var()) / _n_year(from_day, to_day)
 
     n_ticker = len(df_daily.columns)
     if n_ticker == 1:
