@@ -31,5 +31,6 @@ setuptools.setup(
         "pywavelets",
         "tqdm",
         "pyarrow",
+        "gunicorn",
     ]
 )
