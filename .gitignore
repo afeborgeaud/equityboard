@@ -2,3 +2,6 @@
 .idea
 equityboard/log_download.txt
 **egg-info
+*.pyc
+.DS_Store
+.env
