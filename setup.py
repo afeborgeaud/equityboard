@@ -20,7 +20,7 @@ setuptools.setup(
     package_dir={"": "equityboard"},
     packages=setuptools.find_packages(where="equityboard"),
     python_requires=">=3.9",
-    requires=[
+    install_requires=[
         "requests",
         "numpy",
         "pandas",
