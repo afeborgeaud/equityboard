@@ -1,14 +1,14 @@
+from capm import capm, efficient_frontier, profit, stock_prices, daily_return
+from capm import risk, _n_year
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from capm import capm, efficient_frontier, profit, stock_prices, daily_return
-from capm import risk, _n_year
-from download import us_tickers
 import numpy as np
-from datetime import date
+from pkg_resources import resource_stream
+import pickle
 
 
 def chart(df_profit: pd.DataFrame, tickers: list[str]) -> None:
@@ -27,7 +27,6 @@ def capm_scatter(
         df_daily: pd.DataFrame, risk: pd.Series, profit: pd.Series,
         from_day, to_day, tickers: list[str]) -> None:
     df_capm = capm(risk, profit)
-    print(profit.head())
     res = None
 
     if len(tickers) > 1:
@@ -92,7 +91,7 @@ server = app.server
 
 # global variables
 iso_fmt = '%Y-%m-%d'
-all_tickers = us_tickers().index.tolist()
+all_tickers = pickle.load(resource_stream('resources', 'tickers.pkl'))
 
 # initial state
 range_init = ['2020-01-01', '2021-04-09']
