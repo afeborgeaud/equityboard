@@ -98,21 +98,30 @@ def efficient_frontier(
 
     weights = np.zeros((len(target_profits), n_ticker), dtype='float')
     total_risks = np.zeros(len(target_profits), dtype='float')
-    max_it = 5
+    max_it = 4
     for i, target_profit in enumerate(target_profits):
         lc1 = LinearConstraint(C1, target_profit, target_profit)
         res = minimize(
             total_risk, w0,
             bounds=bounds, constraints=(lc1, lc2),
             options={'maxiter': max_it}
-            # True if x[1].nit >= max_it else False
         )
-        # print(res)
         weights[i] = res.x
         total_risks[i] = total_risk(weights[i])
     total_profits = np.dot(weights, profits.to_numpy())
 
     return weights, total_risks, total_profits
+
+
+def result_df(weights: np.array,
+                 risks: np.array,
+                 profits: np.array,
+                 tickers: list[str]) -> pd.DataFrame:
+    assert weights.shape[1] == len(tickers)
+    d = {'ann. return (%)': profits, 'ann. risk': risks}
+    d.update({tickers[i]: weights[:, i] for i in range(len(tickers))})
+    df = pd.DataFrame(data=d)
+    return df
 
 
 if __name__ == '__main__':
@@ -122,8 +131,6 @@ if __name__ == '__main__':
     df_profit = profit(df_filt, '2020-04-09', '2021-04-01')
     df_daily = daily_return(df_filt, '2020-04-09', '2021-04-01')
     profits = df_profit.iloc[-1].to_numpy()
-
-    # print(df.describe())
 
     weights, risks, profits = efficient_frontier(
         df_daily, profits, [float(i) for i in range(1, 100, 2)],

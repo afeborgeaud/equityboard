@@ -1,5 +1,5 @@
 from capm import capm, efficient_frontier, profit, stock_prices, daily_return
-from capm import risk, _n_year
+from capm import risk, _n_year, result_df
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -77,7 +77,30 @@ def capm_scatter(
         # height=600,
         # width=650,
     )
-    return fig
+    return fig, res
+
+
+def generate_table(df: pd.DataFrame, row_index, maxcol=12) -> html.Table:
+    i = min(row_index, len(df)-1)
+    ncol = min(len(df.columns), maxcol)
+    return html.Table(children=[
+        html.Thead(
+            html.Tr([html.Th(df.columns[j]) for j in range(ncol)])
+        ),
+        html.Tbody([
+            # html.Tr([
+            #     html.Td(f'{df.iloc[i][col]:.2f}')
+            #     for col in df.columns
+            # ]) for i in range(row_index, row_index+1)
+            html.Tr([
+                html.Td(f'{df.iloc[i][df.columns[j]]:.2f}')
+                for j in range(ncol)
+            ]),
+        ])
+    ],
+        id='tab-res',
+        style={'color': 'white'},
+    )
 
 
 external_stylesheets = [
@@ -160,9 +183,34 @@ app.layout = html.Div(
                 dcc.Graph(
                     id='g-capm',
                 ),
+
+                html.Div('Portfolio weights',
+                        style={'background-color': 'black',
+                               'color': 'white',
+                               'font-weight': 'bold',
+                               'font-size': 'normal',
+                               'padding-left': '50px',
+                               'margin-bottom': '-5px',
+                               'font-size': 'larger'}),
+                html.Div(
+                    [
+                        html.Table(id='tab-res'),
+                        dcc.Slider(
+                                    id='slider-res',
+                                    min=1,
+                                    max=10,
+                                    marks={i: str(i) for i in range(1, 11)},
+                                    value=1,
+                                )
+                    ],
+                    id='tab-weights',
+                    style={'background-color': 'black', 'padding-left': '50px'}
+                ),
             ],
             className='twelve columns cell'
-        )
+        ),
+
+        html.Div(id='store-weights', style={'display': 'none'})
     ],
     className="container",
 )
@@ -170,6 +218,8 @@ app.layout = html.Div(
 @app.callback(
     dash.dependencies.Output('g-chart', 'figure'),
     dash.dependencies.Output('g-capm', 'figure'),
+    dash.dependencies.Output('tab-weights', 'children'),
+    dash.dependencies.Output('store-weights', 'children'),
     dash.dependencies.Input('dd-chart-ticker', 'value'),
     dash.dependencies.Input('bt-range', 'n_clicks'),
     dash.dependencies.State('in-text-from', 'value'),
@@ -190,22 +240,53 @@ def update_output(tickers, n_clicks, from_day, to_day):
     n_year = _n_year(from_day, to_day)
     ser_profit = ser_profit.abs().pow(1. / n_year) * np.sign(ser_profit)
     ser_profit.name = 'return'
+
+    fig_capm, res = capm_scatter(
+        df_daily, ser_risk, ser_profit,
+        from_day, to_day, tickers)
+
+    if res is not None:
+        res_df = result_df(*res, tickers)
+    else:
+        weights = np.ones((1, 1), dtype='float')
+        res_df = result_df(weights,
+                           ser_risk.to_numpy(),
+                           ser_profit.to_numpy(),
+                           tickers)
+    tab_weights = generate_table(res_df, 0)
+
+    slider = html.Div([
+        dcc.Slider(
+            id='slider-res',
+            min=1,
+            max=10,
+            marks={i: str(i) for i in range(1, 11)},
+            value=1,
+        )],
+        # className='twelve columns',
+        style={
+            'width': '30%', 'padding-bottom': '12px',
+            'margin-top': '20px', 'margin-left': '-20px'}
+    )
+
     return [
         chart(df_profit, tickers),
-        capm_scatter(
-            df_daily, ser_risk, ser_profit,
-            from_day, to_day, tickers)
+        fig_capm,
+        [
+            tab_weights,
+            slider,
+        ],
+        res_df.to_json(date_format='iso', orient='split'),
     ]
 
-# @app.callback(
-#     dash.dependencies.Output('g-capm', 'figure'),
-#     dash.dependencies.Input('dd-chart-ticker', 'value'),
-#     dash.dependencies.Input('bt-range', 'n_clicks'),
-#     dash.dependencies.State('in-text-from', 'value'),
-#     dash.dependencies.State('in-text-to', 'value'),
-# )
-# def update_output(tickers, n_clicks, from_day, to_day):
-#     return capm_scatter(df, df_daily, from_day, to_day, tickers)
+@app.callback(
+    dash.dependencies.Output('tab-res', 'children'),
+    dash.dependencies.Input('slider-res', 'value'),
+    dash.dependencies.Input('store-weights', 'children')
+)
+def update_output(slider, jsonified_res_df):
+    res_df = pd.read_json(jsonified_res_df, orient='split')
+    return generate_table(res_df, slider-1)
 
 
 if __name__ == '__main__':
