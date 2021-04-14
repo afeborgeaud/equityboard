@@ -32,7 +32,11 @@ def _n_year(from_day: str, to_day: str) -> float:
 def risk(
         df_daily: pd.DataFrame, from_day: str, to_day: str,
         annual=True) -> pd.Series:
-    r = (df_daily - df_daily.mean(axis=0)).var(axis=0)
+    r = np.sqrt(
+        (
+            df_daily[from_day:to_day]
+            - df_daily[from_day:to_day].mean(axis=0)
+        ).var(axis=0))
     r.name = 'risk'
     if annual:
         n_year = _n_year(from_day, to_day)
@@ -72,8 +76,7 @@ def capm(
 
 def efficient_frontier(
         df_daily: pd.DataFrame, profits: pd.Series,
-        target_profits: np.array, from_day: str, to_day: str,
-        annual=True):
+        target_profits: np.array, from_day: str, to_day: str):
     def total_risk(weights):
         df = df_daily[from_day:to_day] - df_daily[from_day:to_day].mean(axis=0)
         return np.sqrt(
@@ -95,7 +98,7 @@ def efficient_frontier(
 
     weights = np.zeros((len(target_profits), n_ticker), dtype='float')
     total_risks = np.zeros(len(target_profits), dtype='float')
-    max_it = 3
+    max_it = 5
     for i, target_profit in enumerate(target_profits):
         lc1 = LinearConstraint(C1, target_profit, target_profit)
         res = minimize(
@@ -109,11 +112,6 @@ def efficient_frontier(
         total_risks[i] = total_risk(weights[i])
     total_profits = np.dot(weights, profits.to_numpy())
 
-    if annual:
-        n_year = (date.fromisoformat(to_day) - date.fromisoformat(
-            from_day)).days / 365.
-        total_risks = total_risks ** (1. / n_year)
-
     return weights, total_risks, total_profits
 
 
@@ -125,7 +123,6 @@ if __name__ == '__main__':
     df_daily = daily_return(df_filt, '2020-04-09', '2021-04-01')
     profits = df_profit.iloc[-1].to_numpy()
 
-    print(df.info())
     # print(df.describe())
 
     weights, risks, profits = efficient_frontier(

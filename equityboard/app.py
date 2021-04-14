@@ -180,6 +180,9 @@ def update_output(tickers, n_clicks, from_day, to_day):
     df_daily = daily_return(df,
                             df.index[1].strftime(iso_fmt),
                             df.index[-1].strftime(iso_fmt))
+    # df_daily = daily_return(df,
+    #                         '2019-12-30',
+    #                         '2021-04-08')
     df_profit = profit(df, from_day, to_day)
     ser_risk = risk(df_daily, from_day, to_day)
 
