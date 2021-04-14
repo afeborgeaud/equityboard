@@ -10,7 +10,7 @@ from pkg_resources import resource_stream
 
 def stock_prices(tickers=None):
     df = pd.read_parquet(
-        resource_stream('resources', 'stock_closes_2016.pq'),
+        resource_stream('resources', 'stock_closes.pq'),
         columns=tickers
     )
     df = df.interpolate(method='backfill', axis=0)

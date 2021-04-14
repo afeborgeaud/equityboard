@@ -7,7 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-from pkg_resources import resource_stream
+from pkg_resources import resource_stream, resource_filename
 import pickle
 
 
@@ -15,11 +15,11 @@ def chart(df_profit: pd.DataFrame, tickers: list[str]) -> None:
     fig = px.line(df_profit, y=tickers,
                   labels={'value': 'Return (%)'},
                   )
-    # fig.update_layout(
-    #     plot_bgcolor=colors['background'],
-    #     paper_bgcolor=colors['background'],
-    #     font_color=colors['text'],
-    # )
+    fig.update_layout(
+        plot_bgcolor=colors['background'],
+        paper_bgcolor=colors['background'],
+        font_color=colors['text'],
+    )
     return fig
 
 
@@ -69,20 +69,25 @@ def capm_scatter(
             go.Scatter(x=risks, y=profits, mode='lines',
                        name='eff. front.')
         )
-    # fig.update_layout(
-    #     plot_bgcolor=colors['background'],
-    #     paper_bgcolor=colors['background'],
-    #     font_color=colors['text'],
-    # )
+
+    fig.update_layout(
+        plot_bgcolor=colors['background'],
+        paper_bgcolor=colors['background'],
+        font_color=colors['text'],
+        # height=600,
+        # width=650,
+    )
     return fig
 
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+external_stylesheets = [
+    'https://codepen.io/chriddyp/pen/bWLwgP.css'
+]
 
 colors = {
-    # 'background': '#111111',
-    'background': '#FFFFFF',
-    'text': 'black',
+    'background': '#111111',
+    # 'background': '#FFFFFF',
+    'text': 'white',
 }
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
@@ -97,71 +102,70 @@ all_tickers = pickle.load(resource_stream('resources', 'tickers.pkl'))
 range_init = ['2020-01-01', '2021-04-09']
 tickers_init = ['AAPL'] # ['AAPL', 'AAL', 'ABBV']
 
-app.layout = html.Div(children=[
-    dcc.Markdown('''
-        # Capital Asset Pricing Model (CAPM)
-    '''),
+app.layout = html.Div(
+    [
+        dcc.Markdown('''
+            # Capital Asset Pricing Model (CAPM)
+        ''',
+            className='twelve columns title'
+        ),
 
-    html.Div([
-        html.Div([
-            html.Div([
-                dcc.Dropdown(
-                    id='dd-chart-ticker',
-                    options=[
-                        {'label': t, 'value': t}
-                        for t in all_tickers
+        html.Div(
+            [
+                html.Div(
+                    [
+                        dcc.Dropdown(
+                            id='dd-chart-ticker',
+                            options=[
+                                {'label': t, 'value': t}
+                                for t in all_tickers
+                            ],
+                            value=tickers_init,
+                            multi=True,
+                        ),
                     ],
-                    value=tickers_init,
-                    multi=True,
                 ),
-                ], style={'width': '100%', 'float': 'left',
-                          'display': 'inline-block'}
-            ),
-            # html.Div([
-            dcc.Input(
-                id='in-text-from',
-                type='text',
-                value=range_init[0],
-                placeholder='From: 2020-01-01'
-            ),
-            dcc.Input(
-                id='in-text-to',
-                type='text',
-                value=range_init[1],
-                placeholder='To: 2021-01-01'
-            ),
-            html.Button(
-                id='bt-range',
-                n_clicks=0,
-                children='apply'
-            )
-            ], style={'width': '49%', 'float': 'left',
-                      'display': 'inline-block'}
+                dcc.Input(
+                    id='in-text-from',
+                    type='text',
+                    value=range_init[0],
+                    placeholder='From: 2020-01-01',
+                ),
+                dcc.Input(
+                    id='in-text-to',
+                    type='text',
+                    value=range_init[1],
+                    placeholder='To: 2021-01-01'
+                ),
+                html.Button(
+                    id='bt-range',
+                    n_clicks=0,
+                    children='apply'
+                )
+            ],
+            className='twelve columns cell'
+        ),
+
+        html.Div(
+            [
+                dcc.Graph(
+                    id='g-chart',
+                ),
+            ],
+            className='twelve columns cell'
+        ),
+
+        html.Div(
+            [
+                dcc.Graph(
+                    id='g-capm',
+                ),
+            ],
+            className='twelve columns cell'
         )
-            # ], style={'width': '49%', 'float': 'left',
-            #           'display': 'inline-block'}
-        # )
-    ], style={'width': '100%', 'display': 'inline-block'}
-    ),
-
-    html.Div([
-        dcc.Graph(
-            id='g-chart',
-            # figure=chart(profit(df, range_init[0], range_init[1]),
-            #              tickers_init)
-        ),
-    ], style={'width': '49%', 'float': 'left', 'display': 'inline-block'}
-    ),
-
-    html.Div([
-        dcc.Graph(
-            id='g-capm',
-            # figure=capm_scatter(df, range_init[0],
-            #                     range_init[1], tickers_init)
-        ),
-    ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'}
-    )
-])
+    ],
+    className="container",
+)
 
 @app.callback(
     dash.dependencies.Output('g-chart', 'figure'),
