@@ -7,7 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-from pkg_resources import resource_stream, resource_filename
+from pkg_resources import resource_stream
 import pickle
 
 
