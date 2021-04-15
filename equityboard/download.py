@@ -1,5 +1,6 @@
 import requests
-from datetime import datetime, time, timezone, date
+from datetime import datetime, time, timezone, date, timedelta
+import time as tt
 import pandas as pd
 import os
 from tqdm import tqdm
@@ -11,6 +12,10 @@ import pickle
 logging.basicConfig(level=logging.DEBUG,
                     filename='log_download.txt',
                     filemode='w')
+
+df_fname_tmp = resource_filename(
+                'resources', 'stock_closes_tmp.pq')
+df_fname = df_fname_tmp.replace('_tmp', '')
 
 
 def investopedia_url(ticker: str, from_day: str, to_day: str):
@@ -138,7 +143,16 @@ def check(df: pd.DataFrame) -> bool:
     return True
 
 
-# def most_recent_rec()
+def most_recent_date():
+    df = pd.read_parquet(
+        df_fname,
+        columns=['AAPL']
+    )
+    day = df.index[-1].strftime("%Y-%m-%d")
+    next_day = ((date.fromisoformat(day) + timedelta(days=1))
+                    .isoformat())
+    today = datetime.utcfromtimestamp(tt.time()).date()
+    return next_day, today
 
 
 if __name__ == '__main__':
@@ -151,12 +165,9 @@ if __name__ == '__main__':
 
     if check(df):
         try:
-            outname_tmp = resource_filename(
-                'resources', 'stock_closes_tmp.pq')
-            outname = outname_tmp.replace('_tmp', '')
-            process(df).to_parquet(outname_tmp)
-            os.rename(outname_tmp, outname)
-            logging.info(f'wrote new dataframe to {outname}')
+            process(df).to_parquet(df_fname_tmp)
+            os.rename(df_fname_tmp, df_fname)
+            logging.info(f'wrote new dataframe to {df_fname}')
 
             all_tickers = process(df).columns.tolist()
             fname_ticker = resource_filename(
