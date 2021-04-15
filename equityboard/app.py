@@ -43,7 +43,7 @@ def capm_scatter(
 
     if len(tickers) > 1:
         target_profits = np.linspace(max(0., profit.min()),
-                                     profit.max(), 10)
+                                     profit.max(), 15)
         res = efficient_frontier(
             df_daily[tickers], profit, target_profits, from_day, to_day)
 
@@ -217,8 +217,8 @@ app.layout = html.Div(
                         dcc.Slider(
                                     id='slider-res',
                                     min=1,
-                                    max=10,
-                                    marks={i: str(i) for i in range(1, 11)},
+                                    max=15,
+                                    marks={i: str(i) for i in range(1, 16)},
                                     value=1,
                                 )
                     ],
@@ -275,13 +275,13 @@ def update_output(tickers, n_clicks, from_day, to_day):
         dcc.Slider(
             id='slider-res',
             min=1,
-            max=10,
-            marks={i: str(i) for i in range(1, 11)},
+            max=15,
+            marks={i: str(i) for i in [1, 5, 10, 15]},
             value=1,
         )],
         # className='twelve columns',
         style={
-            'width': '30%', 'padding-bottom': '12px',
+            'width': '34%', 'padding-bottom': '12px',
             'margin-top': '20px', 'margin-left': '-20px'}
     )
 
