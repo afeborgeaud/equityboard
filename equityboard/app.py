@@ -13,12 +13,24 @@ import pickle
 
 def chart(df_profit: pd.DataFrame, tickers: list[str]) -> None:
     fig = px.line(df_profit, y=tickers,
-                  labels={'value': 'Return (%)'},
+                  labels={'value': 'Return (%)',
+                          'variable': 'Symbol'},
+                  # hover_name='variable',
+                  custom_data=['variable', 'value'],
                   )
     fig.update_layout(
         plot_bgcolor=colors['background'],
         paper_bgcolor=colors['background'],
         font_color=colors['text'],
+        hovermode='x unified',
+    )
+    fig.update_traces(
+        hovertemplate=''.join([
+            '<b>%{customdata[0]}</b> %{customdata[1]:.2f}%',
+            # 'date: %{x}',
+            # 'return: %{customdata[1]:.2f}%',
+            '<extra></extra>'
+        ])
     )
     return fig
 
@@ -38,21 +50,32 @@ def capm_scatter(
     if res is not None:
         weights, risks, profits = res
 
+    df_capm.reset_index(inplace=True)
+    risk_ = df_capm.loc[df_capm.Symbol.isin(tickers), 'risk']
     fig = px.scatter(
-        df_capm.loc[tickers], x='risk', y='return',
-        color=df_capm.index.tolist(),
-        size=np.ones(len(tickers)),
-        size_max=10,
+        df_capm[df_capm.Symbol.isin(tickers)], x='risk', y='return',
+        color='Symbol',
+        # size=np.ones(len(tickers)),
+        # size_max=10,
         labels={'risk': 'Annualized risk',
                 'return': 'Annualized return (%)',
                 'color': 'Symbol'},
-        hover_name=df_capm.index.tolist(),
-        hover_data={'return': True,
-                     'risk': True,
-                     'Name': True,
-                     # 'Symbol': False,
-                     },
+        # hover_name='Symbol',
+        custom_data=['Symbol', 'Name'],
 
+    )
+    fig.update_traces(
+        marker={
+                    'size': [15 for i in range(len(df_capm))],
+                },
+        hovertemplate="<br>".join([
+            "<b>%{customdata[0]}</b>",
+            "risk: %{x:.2f}",
+            "ann. return: %{y:.2f}%",
+            # "name: %{customdata[1]}",
+            "<extra></extra>"
+        ]),
+        selector=dict(type='scatter'),
     )
     # fig.add_traces(
     #     go.Scatter(
@@ -88,10 +111,6 @@ def generate_table(df: pd.DataFrame, row_index, maxcol=12) -> html.Table:
             html.Tr([html.Th(df.columns[j]) for j in range(ncol)])
         ),
         html.Tbody([
-            # html.Tr([
-            #     html.Td(f'{df.iloc[i][col]:.2f}')
-            #     for col in df.columns
-            # ]) for i in range(row_index, row_index+1)
             html.Tr([
                 html.Td(f'{df.iloc[i][df.columns[j]]:.2f}')
                 for j in range(ncol)
@@ -230,9 +249,6 @@ def update_output(tickers, n_clicks, from_day, to_day):
     df_daily = daily_return(df,
                             df.index[1].strftime(iso_fmt),
                             df.index[-1].strftime(iso_fmt))
-    # df_daily = daily_return(df,
-    #                         '2019-12-30',
-    #                         '2021-04-08')
     df_profit = profit(df, from_day, to_day)
     ser_risk = risk(df_daily, from_day, to_day)
 
