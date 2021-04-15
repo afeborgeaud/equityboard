@@ -254,7 +254,9 @@ def update_output(tickers, n_clicks, from_day, to_day):
 
     ser_profit = df_profit.iloc[-1]
     n_year = _n_year(from_day, to_day)
-    ser_profit = ser_profit.abs().pow(1. / n_year) * np.sign(ser_profit)
+    ser_profit = (
+            (1 + ser_profit/100.).pow(1. / n_year)
+            - 1) * 100
     ser_profit.name = 'return'
 
     fig_capm, res = capm_scatter(
