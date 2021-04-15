@@ -142,7 +142,7 @@ all_tickers = pickle.load(resource_stream('resources', 'tickers.pkl'))
 
 # initial state
 range_init = ['2020-01-01', '2021-04-09']
-tickers_init = ['AAPL'] # ['AAPL', 'AAL', 'ABBV']
+tickers_init = ['AAPL']
 
 app.layout = html.Div(
     [

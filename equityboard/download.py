@@ -5,7 +5,8 @@ import os
 from tqdm import tqdm
 import logging
 from time import sleep
-from pkg_resources import resource_stream
+from pkg_resources import resource_stream, resource_filename
+import pickle
 
 logging.basicConfig(level=logging.DEBUG,
                     filename='log_download.txt',
@@ -40,13 +41,17 @@ def yahoo_url(ticker: str, from_day: str, to_day: str) -> str:
     )
     return (
         "https://query1.finance.yahoo.com/v7/finance/download/"
-        f"{ticker.upper()}?period1={from_dt}&period2={to_dt}&interval=1d"
+        f"{rename_ticker(ticker).upper()}"
+        f"?period1={from_dt}&period2={to_dt}&interval=1d"
         "&events=history&includeAdjustedClose=true"
     )
 
 
 def rename_ticker(ticker: str) -> str:
-    return ticker.replace('/', '-')
+    return (
+        ticker.replace('/', '-')
+            .strip()
+    )
 
 
 def yahoo_to_series(ticker: str, from_day: str, to_day: str) -> pd.Series:
@@ -57,7 +62,7 @@ def yahoo_to_series(ticker: str, from_day: str, to_day: str) -> pd.Series:
         else:
             return float(str)
     url = yahoo_url(ticker, from_day, to_day)
-    logging.info(f"requesting {ticker}")
+    logging.info(url)
     r = requests.get(url)
     # if r.status_code != 200:
     #     raise ValueError(f'Could not fetch {url}')
@@ -83,14 +88,15 @@ def yahoo_to_dataframe(tickers: list[str],
     series = []
     for t in tqdm(tickers):
         fname = f'{rename_ticker(t).lower()}.gzip'
-        if os.path.exists(fname):
-            ser = pd.read_pickle(fname)
+        fpath = resource_filename('resources', fname)
+        if os.path.exists(fpath):
+            ser = pd.read_pickle(fpath)
             series.append(ser)
         else:
             ser = yahoo_to_series(t, from_day, to_day)
             sleep(1)
             if ser is not None:
-                ser.to_pickle(f'{rename_ticker(t).lower()}.gzip')
+                ser.to_pickle(fpath)
                 series.append(ser)
     if len(series) == 0:
         return None
@@ -109,6 +115,32 @@ def us_tickers() -> pd.DataFrame:
     return df
 
 
+def process(df: pd.DataFrame) -> pd.DataFrame:
+    df_proc = df.interpolate(method='backfill', axis=0)
+    full_index = pd.date_range(df_proc.index.min(), df_proc.index.max(),
+                               freq='D')
+    ser = pd.Series(range(len(full_index)), index=full_index, name='dummy')
+    df_proc = df_proc.join(ser, how='right')
+    df_proc.index.name = 'Date'
+    df_proc.interpolate('index', inplace=True)
+    df_proc.drop(['dummy'], axis=1, inplace=True)
+    df_proc.dropna(axis=1, how='all', inplace=True)
+    return df_proc
+
+
+def check(df: pd.DataFrame) -> bool:
+    logging.info(df.info())
+    na_columns = df.isna().all(axis=0)
+    na_columns = na_columns[na_columns]
+    na_tickers = ' '.join([t for t in na_columns.index])
+    logging.info(f'NaN tickers: {na_tickers}')
+    logging.info(f'Number of NaN tickers: {len(na_columns)}')
+    return True
+
+
+# def most_recent_rec()
+
+
 if __name__ == '__main__':
     companies = us_tickers()
     companies = companies[
@@ -116,5 +148,23 @@ if __name__ == '__main__':
     ]
     tickers = companies.index.to_numpy()
     df = yahoo_to_dataframe(tickers, '1990-01-01', '2021-04-11')
-    df.to_parquet(os.path.join('resources', 'stock_closes.pq'))
+
+    if check(df):
+        try:
+            outname_tmp = resource_filename(
+                'resources', 'stock_closes_tmp.pq')
+            outname = outname_tmp.replace('_tmp', '')
+            process(df).to_parquet(outname_tmp)
+            os.rename(outname_tmp, outname)
+            logging.info(f'wrote new dataframe to {outname}')
+
+            all_tickers = process(df).columns.tolist()
+            fname_ticker = resource_filename(
+                'resources', 'tickers.pkl')
+            with open(fname_ticker, 'wb') as f:
+                pickle.dump(all_tickers, f)
+            logging.info(f'wrote tickers to {fname_ticker}')
+        except:
+            logging.debug('failed to write new dataframe')
+
 

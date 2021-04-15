@@ -13,14 +13,14 @@ def stock_prices(tickers=None):
         resource_stream('resources', 'stock_closes.pq'),
         columns=tickers
     )
-    df = df.interpolate(method='backfill', axis=0)
-    full_index = pd.date_range(df.index.min(), df.index.max(), freq='D')
-    ser = pd.Series(range(len(full_index)), index=full_index, name='dummy')
-    df = df.join(ser, how='right')
-    df.index.name = 'Date'
-    df.interpolate('index', inplace=True)
-    df.drop(['dummy'], axis=1, inplace=True)
-    df.dropna(axis=1, how='all', inplace=True)
+    # df = df.interpolate(method='backfill', axis=0)
+    # full_index = pd.date_range(df.index.min(), df.index.max(), freq='D')
+    # ser = pd.Series(range(len(full_index)), index=full_index, name='dummy')
+    # df = df.join(ser, how='right')
+    # df.index.name = 'Date'
+    # df.interpolate('index', inplace=True)
+    # df.drop(['dummy'], axis=1, inplace=True)
+    # df.dropna(axis=1, how='all', inplace=True)
     return df
 
 
