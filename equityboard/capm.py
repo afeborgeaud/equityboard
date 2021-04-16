@@ -30,17 +30,12 @@ def _n_year(from_day: str, to_day: str) -> float:
 
 
 def risk(
-        df_daily: pd.DataFrame, from_day: str, to_day: str,
-        annual=True) -> pd.Series:
-    r = np.sqrt(
-        (
-            df_daily[from_day:to_day]
-            - df_daily[from_day:to_day].mean(axis=0)
-        ).var(axis=0))
+        df_daily: pd.DataFrame, from_day: str, to_day: str
+        ) -> pd.Series:
+    """Compute risk as standard deviation
+    of daily price returns in percent."""
+    r = df_daily[from_day:to_day].std(axis=0, ddof=0)
     r.name = 'risk'
-    if annual:
-        n_year = _n_year(from_day, to_day)
-        r = r / n_year
     return r
 
 
@@ -53,14 +48,17 @@ def profit(
     return df_profit[from_day:to_day]
 
 
-def daily_return(df, from_day, to_day):
+def daily_return(df: pd.DataFrame,
+                 from_day: str, to_day: str) -> pd.DataFrame:
+    """Compute daily price variations in percent."""
     previous_day = ((date.fromisoformat(from_day) - timedelta(days=1))
                      .isoformat())
     previous_to_day = ((date.fromisoformat(to_day) - timedelta(days=1))
                     .isoformat())
-    daily = df[previous_day:to_day].diff(axis=0)[from_day:to_day]
-    daily = daily / df[previous_day:previous_to_day].to_numpy() * 100
-    return daily
+    return (
+        df[previous_day:to_day].diff(axis=0)[from_day:to_day]
+        / df[previous_day:previous_to_day].to_numpy()
+    ) * 100
 
 
 def capm(
@@ -78,12 +76,12 @@ def efficient_frontier(
         df_daily: pd.DataFrame, profits: pd.Series,
         target_profits: np.array, from_day: str, to_day: str):
     def total_risk(weights):
-        df = df_daily[from_day:to_day] - df_daily[from_day:to_day].mean(axis=0)
-        return np.sqrt(
-            np.sum(
-                (df.to_numpy() * weights.reshape(1, -1)),
-                axis=1)
-            .var()) / _n_year(from_day, to_day)
+        return (
+                   np.sum((df_daily[from_day:to_day].to_numpy()
+                           * weights.reshape(1, -1)),
+                          axis=1)
+                   .std()
+        )
 
     n_ticker = len(df_daily.columns)
     if n_ticker == 1:
@@ -126,22 +124,8 @@ def result_df(weights: np.array,
 
 if __name__ == '__main__':
     df = stock_prices()
-    df_filt = df[['AAC', 'AAPL', 'AA']]
-    df_capm = capm(df_filt, '2020-04-09', '2021-04-01')
-    df_profit = profit(df_filt, '2020-04-09', '2021-04-01')
-    df_daily = daily_return(df_filt, '2020-04-09', '2021-04-01')
-    profits = df_profit.iloc[-1].to_numpy()
-
-    weights, risks, profits = efficient_frontier(
-        df_daily, profits, [float(i) for i in range(1, 100, 2)],
-        '2020-04-09', '2021-04-01')
-    # risks = np.dot(weights, df_capm_filt.risk.to_numpy())
-    # profits = np.dot(weights, df_capm_filt['return'].to_numpy())
-    # print(weights)
-    # plt.plot(risks, profits)
-    # plt.scatter(df_capm['risk'], df_capm['return'])
-    # plt.show()
-
-    # print(df.loc[:, 'AAC'])
-    # print(df_capm.head())
-    # print(df_capm.loc['AAC'])
+    daily = daily_return(df[['AAPL']],
+                         '2020-01-01',
+                         '2021-04-09')
+    daily.plot()
+    plt.show()

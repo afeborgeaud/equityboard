@@ -43,7 +43,7 @@ def capm_scatter(
 
     if len(tickers) > 1:
         target_profits = np.linspace(max(0., profit.min()),
-                                     profit.max(), 15)
+                                     profit.max(), n_eff)
         res = efficient_frontier(
             df_daily[tickers], profit, target_profits, from_day, to_day)
 
@@ -51,14 +51,13 @@ def capm_scatter(
         weights, risks, profits = res
 
     df_capm.reset_index(inplace=True)
-    risk_ = df_capm.loc[df_capm.Symbol.isin(tickers), 'risk']
     fig = px.scatter(
         df_capm[df_capm.Symbol.isin(tickers)], x='risk', y='return',
         color='Symbol',
         # size=np.ones(len(tickers)),
         # size_max=10,
-        labels={'risk': 'Annualized risk',
-                'return': 'Annualized return (%)',
+        labels={'risk': 'Standard dev. of daily returns (%)',
+                'return': 'Compound annual return (%)',
                 'color': 'Symbol'},
         # hover_name='Symbol',
         custom_data=['Symbol', 'Name'],
@@ -70,8 +69,8 @@ def capm_scatter(
                 },
         hovertemplate="<br>".join([
             "<b>%{customdata[0]}</b>",
-            "risk: %{x:.2f}",
-            "ann. return: %{y:.2f}%",
+            "risk: %{x:.2f}%",
+            "return: %{y:.2f}%",
             # "name: %{customdata[1]}",
             "<extra></extra>"
         ]),
@@ -139,6 +138,7 @@ server = app.server
 # global variables
 iso_fmt = '%Y-%m-%d'
 all_tickers = pickle.load(resource_stream('resources', 'tickers.pkl'))
+n_eff = 20
 
 # initial state
 range_init = ['2020-01-01', '2021-04-09']
@@ -147,7 +147,7 @@ tickers_init = ['AAPL']
 app.layout = html.Div(
     [
         dcc.Markdown('''
-            # Capital Asset Pricing Model (CAPM)
+            # Modern Portfolio Theory (MPT)
         ''',
             className='twelve columns title'
         ),
@@ -217,8 +217,8 @@ app.layout = html.Div(
                         dcc.Slider(
                                     id='slider-res',
                                     min=1,
-                                    max=15,
-                                    marks={i: str(i) for i in range(1, 16)},
+                                    max=n_eff,
+                                    marks={i: str(i) for i in range(1, n_eff)},
                                     value=1,
                                 )
                     ],
@@ -277,8 +277,8 @@ def update_output(tickers, n_clicks, from_day, to_day):
         dcc.Slider(
             id='slider-res',
             min=1,
-            max=15,
-            marks={i: str(i) for i in [1, 5, 10, 15]},
+            max=n_eff,
+            marks={i: str(i) for i in [1, 5, 10, 15, 20]},
             value=1,
         )],
         # className='twelve columns',
