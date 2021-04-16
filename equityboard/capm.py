@@ -116,7 +116,7 @@ def result_df(weights: np.array,
                  profits: np.array,
                  tickers: list[str]) -> pd.DataFrame:
     assert weights.shape[1] == len(tickers)
-    d = {'ann. return (%)': profits, 'ann. risk': risks}
+    d = {'ann. return (%)': profits, 'risk (%)': risks}
     d.update({tickers[i]: weights[:, i] for i in range(len(tickers))})
     df = pd.DataFrame(data=d)
     return df
