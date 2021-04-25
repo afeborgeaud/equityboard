@@ -1,12 +1,12 @@
-name: eqboard
+name: eqboard38
 chanels:
   - conda-forge
   - defaults
   - anaconda
 dependencies:
-  - python=3.9
+  - python=3.8
   - requests
-  - numpy
+  - numpy=1.19
   - pandas
   - scikit-learn
   - matplotlib
@@ -16,3 +16,5 @@ dependencies:
   - tqdm
   - pyarrow
   - gunicorn
+  - tensorflow
+  - h5py

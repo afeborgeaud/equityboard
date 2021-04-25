@@ -7,3 +7,5 @@
 .env
 **gzip
 push.sh
+**h5
+**pq_backup*

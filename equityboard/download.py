@@ -87,7 +87,7 @@ def yahoo_to_series(ticker: str, from_day: str, to_day: str) -> pd.Series:
     return ser
 
 
-def yahoo_to_dataframe(tickers: list[str],
+def yahoo_to_dataframe(tickers: list,
         from_day: str, to_day: str) -> pd.DataFrame:
     """Get closing prices from tickers from Yahoo finance."""
     series = []
@@ -150,21 +150,23 @@ def most_recent_date():
     )
     day = df.index[-1].strftime("%Y-%m-%d")
     next_day = ((date.fromisoformat(day) + timedelta(days=1))
-                    .isoformat())
+                    )
     today = datetime.utcfromtimestamp(tt.time()).date()
     return next_day, today
 
 
-if __name__ == '__main__':
+def get_tickers() -> list:
     companies = us_tickers()
     companies = companies[
         ~companies.index.str.contains('^', regex=False)
     ]
-    tickers = companies.index.to_numpy()
-    df = yahoo_to_dataframe(tickers, '1990-01-01', '2021-04-11')
+    return companies.index.to_numpy()
 
+
+def write_to_parquet(df: pd.DataFrame) -> None:
     if check(df):
         try:
+            os.rename(df_fname, df_fname + f'_backup_{date.today()}')
             process(df).to_parquet(df_fname_tmp)
             os.rename(df_fname_tmp, df_fname)
             logging.info(f'wrote new dataframe to {df_fname}')
@@ -177,5 +179,29 @@ if __name__ == '__main__':
             logging.info(f'wrote tickers to {fname_ticker}')
         except:
             logging.debug('failed to write new dataframe')
+
+
+def request_data() -> None:
+    try:
+        df = pd.read_parquet(
+            df_fname,
+        )
+    except:
+        df = None
+    next_day, today = most_recent_date()
+    if (today - next_day) >= timedelta(days=6):
+        tickers = get_tickers()
+        df_new = yahoo_to_dataframe(tickers,
+                                    next_day.isoformat(),
+                                    today.isoformat())
+        if df is not None:
+            df = process(pd.concat([df, df_new]))
+        else:
+            df = df_new
+        write_to_parquet(df)
+
+
+if __name__ == '__main__':
+    request_data()
 
 

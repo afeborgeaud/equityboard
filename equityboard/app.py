@@ -11,7 +11,7 @@ from pkg_resources import resource_stream
 import pickle
 
 
-def chart(df_profit: pd.DataFrame, tickers: list[str]) -> None:
+def chart(df_profit: pd.DataFrame, tickers: list) -> None:
     fig = px.line(df_profit, y=tickers,
                   labels={'value': 'Return (%)',
                           'variable': 'Symbol'},
@@ -37,7 +37,7 @@ def chart(df_profit: pd.DataFrame, tickers: list[str]) -> None:
 
 def capm_scatter(
         df_daily: pd.DataFrame, risk: pd.Series, profit: pd.Series,
-        from_day, to_day, tickers: list[str]) -> None:
+        from_day, to_day, tickers: list) -> None:
     df_capm = capm(risk, profit)
     res = None
 
@@ -141,7 +141,7 @@ all_tickers = pickle.load(resource_stream('resources', 'tickers.pkl'))
 n_eff = 20
 
 # initial state
-range_init = ['2020-01-01', '2021-04-09']
+range_init = ['2020-01-01', '2021-04-23']
 tickers_init = ['AAPL']
 
 app.layout = html.Div(

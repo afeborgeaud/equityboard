@@ -114,7 +114,7 @@ def efficient_frontier(
 def result_df(weights: np.array,
                  risks: np.array,
                  profits: np.array,
-                 tickers: list[str]) -> pd.DataFrame:
+                 tickers: list) -> pd.DataFrame:
     assert weights.shape[1] == len(tickers)
     d = {'ann. return (%)': profits, 'risk (%)': risks}
     d.update({tickers[i]: weights[:, i] for i in range(len(tickers))})
