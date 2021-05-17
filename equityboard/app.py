@@ -141,8 +141,8 @@ all_tickers = pickle.load(resource_stream('resources', 'tickers.pkl'))
 n_eff = 20
 
 # initial state
-range_init = ['2020-01-01', '2021-04-23']
-tickers_init = ['AAPL']
+range_init = ['2020-01-01', '2021-05-14']
+tickers_init = ['ETH-USD']
 
 app.layout = html.Div(
     [

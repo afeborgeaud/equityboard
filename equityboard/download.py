@@ -9,6 +9,7 @@ from time import sleep
 from pkg_resources import resource_stream, resource_filename
 import pickle
 
+
 logging.basicConfig(level=logging.DEBUG,
                     filename='log_download.txt',
                     filemode='w')
@@ -16,6 +17,13 @@ logging.basicConfig(level=logging.DEBUG,
 df_fname_tmp = resource_filename(
                 'resources', 'stock_closes_tmp.pq')
 df_fname = df_fname_tmp.replace('_tmp', '')
+
+oldest_day = '1990-01-02'
+crypto_tickers = [
+    'ETH-USD','BTC-USD','XLM-USD','LINK-USD','XRP-USD','XTZ-USD',
+    'REP-USD','ZRX-USD','ADA-USD','UNI3-USD','AAVE-USD','ATOM1-USD',
+    'ALGO-USD','MKR-USD','COMP-USD','YFI-USD'
+]
 
 
 def investopedia_url(ticker: str, from_day: str, to_day: str):
@@ -88,10 +96,13 @@ def yahoo_to_series(ticker: str, from_day: str, to_day: str) -> pd.Series:
 
 
 def yahoo_to_dataframe(tickers: list,
-        from_day: str, to_day: str) -> pd.DataFrame:
+        from_day: str, to_day: str,
+        current_tickers=None) -> pd.DataFrame:
     """Get closing prices from tickers from Yahoo finance."""
     series = []
     for t in tqdm(tickers):
+        if (current_tickers is not None) and (t not in current_tickers):
+            from_day = oldest_day
         fname = f'{rename_ticker(t).lower()}.gzip'
         fpath = resource_filename('resources', fname)
         if os.path.exists(fpath):
@@ -130,6 +141,9 @@ def process(df: pd.DataFrame) -> pd.DataFrame:
     df_proc.interpolate('index', inplace=True)
     df_proc.drop(['dummy'], axis=1, inplace=True)
     df_proc.dropna(axis=1, how='all', inplace=True)
+    df_proc['day'] = df_proc.index.date
+    df_proc.drop_duplicates(subset='day', inplace=True)
+    df_proc.drop('day', axis=1, inplace=True)
     return df_proc
 
 
@@ -181,6 +195,13 @@ def write_to_parquet(df: pd.DataFrame) -> None:
             logging.debug('failed to write new dataframe')
 
 
+def add_tickers(df: pd.DataFrame, tickers: list) -> pd.DataFrame:
+    from_day = df.index[0].strftime("%Y-%m-%d")
+    to_day = df.index[-1].strftime("%Y-%m-%d")
+    df_add = yahoo_to_dataframe(tickers, from_day, to_day)
+    return df.join(df_add, how='left')
+
+
 def request_data() -> None:
     try:
         df = pd.read_parquet(
@@ -193,9 +214,12 @@ def request_data() -> None:
         tickers = get_tickers()
         df_new = yahoo_to_dataframe(tickers,
                                     next_day.isoformat(),
-                                    today.isoformat())
+                                    today.isoformat(),
+                                    df.columns)
         if df is not None:
-            df = process(pd.concat([df, df_new]))
+            df = process(
+                pd.concat([df, df_new])
+            )
         else:
             df = df_new
         write_to_parquet(df)
@@ -203,5 +227,4 @@ def request_data() -> None:
 
 if __name__ == '__main__':
     request_data()
-
 
