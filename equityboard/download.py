@@ -11,7 +11,7 @@ import pickle
 
 
 logging.basicConfig(level=logging.DEBUG,
-                    filename='log_download.txt',
+                    filename='download.log',
                     filemode='w')
 
 df_fname_tmp = resource_filename(
@@ -69,6 +69,12 @@ def rename_ticker(ticker: str) -> str:
 
 def yahoo_to_series(ticker: str, from_day: str, to_day: str) -> pd.Series:
     """Return closing prices for ticker from Yahoo finance."""
+    # Yahoo request fix from
+    # https://githubmemory.com/repo/atreadw1492/yahoo_fin/issues/61
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) '
+                      'AppleWebKit/537.36 (KHTML, like Gecko) '
+                      'Chrome/50.0.2661.102 Safari/537.36'}
     def to_float(str):
         if str == 'null':
             return None
@@ -76,7 +82,7 @@ def yahoo_to_series(ticker: str, from_day: str, to_day: str) -> pd.Series:
             return float(str)
     url = yahoo_url(ticker, from_day, to_day)
     logging.info(url)
-    r = requests.get(url)
+    r = requests.get(url, headers=headers)
     # if r.status_code != 200:
     #     raise ValueError(f'Could not fetch {url}')
     str = r.content.decode('utf-8')
@@ -92,6 +98,7 @@ def yahoo_to_series(ticker: str, from_day: str, to_day: str) -> pd.Series:
                     dtype='float32')
     ser.index = pd.to_datetime(ser.index)
     ser.index.name = 'date'
+    logging.info(f'len(ser) = {len(ser)}')
     return ser
 
 
@@ -101,15 +108,17 @@ def yahoo_to_dataframe(tickers: list,
     """Get closing prices from tickers from Yahoo finance."""
     series = []
     for t in tqdm(tickers):
-        if (current_tickers is not None) and (t not in current_tickers):
-            from_day = oldest_day
         fname = f'{rename_ticker(t).lower()}.gzip'
         fpath = resource_filename('resources', fname)
         if os.path.exists(fpath):
             ser = pd.read_pickle(fpath)
             series.append(ser)
         else:
-            ser = yahoo_to_series(t, from_day, to_day)
+            if (current_tickers is not None) and (t not in current_tickers):
+                logging.debug(f'ticker {t} is not a current ticker')
+                ser = yahoo_to_series(t, oldest_day, to_day)
+            else:
+                ser = yahoo_to_series(t, from_day, to_day)
             sleep(1)
             if ser is not None:
                 ser.to_pickle(fpath)
@@ -198,6 +207,7 @@ def write_to_parquet(df: pd.DataFrame) -> None:
 def add_tickers(df: pd.DataFrame, tickers: list) -> pd.DataFrame:
     from_day = df.index[0].strftime("%Y-%m-%d")
     to_day = df.index[-1].strftime("%Y-%m-%d")
+    logging.info(f'from: {from_day} to {to_day}')
     df_add = yahoo_to_dataframe(tickers, from_day, to_day)
     return df.join(df_add, how='left')
 
@@ -226,5 +236,6 @@ def request_data() -> None:
 
 
 if __name__ == '__main__':
+    logging.info('Downloading price series from Yahoo Finance')
     request_data()
 
