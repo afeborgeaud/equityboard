@@ -136,7 +136,7 @@ app = dash.Dash(
     meta_tags=[
         {
             'property': 'og:image',
-            'content': '/assets/equity-board-faang.png'
+            'content': 'https://www.dropbox.com/s/amprf03mvo1tdfl/equity-board-faang.png?raw=true'
         }
     ]
 )
