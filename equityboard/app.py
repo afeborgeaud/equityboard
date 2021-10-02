@@ -136,7 +136,7 @@ app = dash.Dash(
     meta_tags=[
         {
             'property': 'og:image',
-            'content': 'equity-board-faang.png'
+            'content': '/assets/equity-board-faang.png'
         }
     ]
 )
@@ -149,7 +149,7 @@ all_tickers = pickle.load(resource_stream('resources', 'tickers.pkl'))
 n_eff = 20
 
 # initial state
-range_init = ['2020-01-01', '2021-08-06']
+range_init = ['2020-01-01', '2021-10-01']
 tickers_init = ['ETH-USD']
 
 app.layout = html.Div(
@@ -199,7 +199,7 @@ app.layout = html.Div(
                                 options=[
                                     {'label': str(i),
                                      'value': i}
-                                    for i in range(1, n_eff)
+                                    for i in range(1, n_eff + 1)
                                 ],
                                 value=1,
                                 searchable=False,
@@ -314,7 +314,7 @@ def update_output(tickers, n_clicks, from_day, to_day):
             options=[
                 {'label': str(i),
                     'value': i}
-                for i in range(1, n_eff)
+                for i in range(1, n_eff + 1)
             ],
             value=1,
             searchable=False,
