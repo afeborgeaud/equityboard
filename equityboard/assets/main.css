@@ -1,21 +1,41 @@
 .page {
-    max-width: 960px;
-    margin: auto;
-    padding: 10px;
+    /* max-width: 960px; */
+    /* margin: auto; */
+    /* padding: 10px; */
+    margin-left: 10px;
+    margin-right: 10px;
 }
 
 .cell {
-    border-radius: 5px;
-    border-color: #dddddd;
-    border-style: outset;
-    border-width: 5px;
-    margin-top: 5px;
+    /* border-radius: 5px; */
+    /* border-color: #dddddd; */
+    /* border-style: outset; */
+    /* border-width: 5px; */
+    /* margin-top: 5px;
     margin-bottom: 5px;
-    padding: 5px;
+    margin-left: 0px; */
+    /* padding: 5px; */
+    margin: 5px;
+}
+
+.graph {
+    margin-top: 5px;
+}
+
+.one.row {
+    height: 85px;
+}
+
+.six.row {
+    height: 300px;
+}
+
+.black {
+    background-color: black;
 }
 
 .title {
-    text-align: center;
+    /* text-align: center; */
 }
 
 .dark {

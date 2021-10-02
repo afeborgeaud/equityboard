@@ -56,7 +56,7 @@ def capm_scatter(
         color='Symbol',
         # size=np.ones(len(tickers)),
         # size_max=10,
-        labels={'risk': 'Standard dev. of daily returns (%)',
+        labels={'risk': 'Standard deviation of daily returns (%)',
                 'return': 'Compound annual return (%)',
                 'color': 'Symbol'},
         # hover_name='Symbol',
@@ -65,8 +65,8 @@ def capm_scatter(
     )
     fig.update_traces(
         marker={
-                    'size': [15 for i in range(len(df_capm))],
-                },
+            'size': [15 for i in range(len(df_capm))],
+        },
         hovertemplate="<br>".join([
             "<b>%{customdata[0]}</b>",
             "risk: %{x:.2f}%",
@@ -117,7 +117,6 @@ def generate_table(df: pd.DataFrame, row_index, maxcol=12) -> html.Table:
         ])
     ],
         id='tab-res',
-        style={'color': 'white'},
     )
 
 
@@ -131,7 +130,16 @@ colors = {
     'text': 'white',
 }
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(
+    __name__,
+    external_stylesheets=external_stylesheets,
+    meta_tags=[
+        {
+            'property': 'og:image',
+            'content': 'equity-board-faang.png'
+        }
+    ]
+)
 
 server = app.server
 
@@ -147,97 +155,124 @@ tickers_init = ['ETH-USD']
 app.layout = html.Div(
     [
         dcc.Markdown('''
-            # Modern Portfolio Theory (MPT)
+            # Portfolio analysis
         ''',
-            className='twelve columns title'
-        ),
-
+                     className='twelve columns title'
+                     ),
         html.Div(
             [
+                html.Div([
+                    html.Div(
+                        [
+                            dcc.Dropdown(
+                                id='dd-chart-ticker',
+                                options=[
+                                    {'label': t, 'value': t}
+                                    for t in all_tickers
+                                ],
+                                value=tickers_init,
+                                multi=True,
+                            ),
+                        ],
+                    ),
+                    dcc.Input(
+                        id='in-text-from',
+                        type='text',
+                        value=range_init[0],
+                        placeholder='From: 2020-01-01',
+                    ),
+                    dcc.Input(
+                        id='in-text-to',
+                        type='text',
+                        value=range_init[1],
+                        placeholder='To: 2021-01-01'
+                    ),
+                    html.Button(
+                        id='bt-range',
+                        n_clicks=0,
+                        children='apply'
+                    ),
+                    html.Div(
+                        [
+                            dcc.Dropdown(
+                                id='dropdown-res',
+                                options=[
+                                    {'label': str(i),
+                                     'value': i}
+                                    for i in range(1, n_eff)
+                                ],
+                                value=1,
+                                searchable=False,
+                                clearable=False,
+                            ),
+                        ],
+                        id='dropdown-weights',
+                        style={
+                            'width': '8%',
+                            'display': 'inline-block',
+                            'vertical-align': 'bottom',
+                            # 'position': 'relative',
+                            'float': 'right'
+                        }
+                    ),
+                ],
+                    className='one row',
+                ),
                 html.Div(
                     [
-                        dcc.Dropdown(
-                            id='dd-chart-ticker',
-                            options=[
-                                {'label': t, 'value': t}
-                                for t in all_tickers
-                            ],
-                            value=tickers_init,
-                            multi=True,
+                        dcc.Graph(
+                            id='g-chart',
                         ),
                     ],
+                    className='six row graph'
                 ),
-                dcc.Input(
-                    id='in-text-from',
-                    type='text',
-                    value=range_init[0],
-                    placeholder='From: 2020-01-01',
+            ],
+            className='six columns cell'
+        ),
+        html.Div(
+            [
+                html.Div([
+
+                    html.Div(
+                        [
+                            html.Table(id='tab-res'),
+                        ],
+                        id='tab-weights',
+                        style={
+                            # 'background-color': 'white',
+                            'color': 'white',
+                            'width': '100%',
+                            'display': 'inline-block',
+                            'vertical-align': 'top',
+                            'margin-left': '5px',
+                            'margin-bottom': '10px',
+                            'margin-top': '-15px'
+                        }
+                    ),
+                ], className='one row black'
                 ),
-                dcc.Input(
-                    id='in-text-to',
-                    type='text',
-                    value=range_init[1],
-                    placeholder='To: 2021-01-01'
-                ),
-                html.Button(
-                    id='bt-range',
-                    n_clicks=0,
-                    children='apply'
+                html.Div([
+                    dcc.Graph(
+                        id='g-capm',
+                    ),
+                ],
+                    className='six row graph'
                 )
             ],
-            className='twelve columns cell'
-        ),
-
-        html.Div(
-            [
-                dcc.Graph(
-                    id='g-chart',
-                ),
-            ],
-            className='twelve columns cell'
-        ),
-
-        html.Div(
-            [
-                dcc.Graph(
-                    id='g-capm',
-                ),
-
-                html.Div('Portfolio weights',
-                        style={'background-color': 'black',
-                               'color': 'white',
-                               'font-weight': 'bold',
-                               'font-size': 'normal',
-                               'padding-left': '50px',
-                               'margin-bottom': '-5px',
-                               'font-size': 'larger'}),
-                html.Div(
-                    [
-                        html.Table(id='tab-res'),
-                        dcc.Slider(
-                                    id='slider-res',
-                                    min=1,
-                                    max=n_eff,
-                                    marks={i: str(i) for i in range(1, n_eff)},
-                                    value=1,
-                                )
-                    ],
-                    id='tab-weights',
-                    style={'background-color': 'black', 'padding-left': '50px'}
-                ),
-            ],
-            className='twelve columns cell'
+            className='six columns cell'
         ),
 
         html.Div(id='store-weights', style={'display': 'none'})
     ],
-    className="container",
+    className="page",
 )
+
 
 @app.callback(
     dash.dependencies.Output('g-chart', 'figure'),
-    dash.dependencies.Output('g-capm', 'figure'),
+    dash.dependencies.Output('dropdown-weights', 'children'),
     dash.dependencies.Output('tab-weights', 'children'),
+    dash.dependencies.Output('g-capm', 'figure'),
     dash.dependencies.Output('store-weights', 'children'),
     dash.dependencies.Input('dd-chart-ticker', 'value'),
     dash.dependencies.Input('bt-range', 'n_clicks'),
@@ -255,8 +290,8 @@ def update_output(tickers, n_clicks, from_day, to_day):
     ser_profit = df_profit.iloc[-1]
     n_year = _n_year(from_day, to_day)
     ser_profit = (
-            (1 + ser_profit/100.).pow(1. / n_year)
-            - 1) * 100
+        (1 + ser_profit/100.).pow(1. / n_year)
+        - 1) * 100
     ser_profit.name = 'return'
 
     fig_capm, res = capm_scatter(
@@ -273,33 +308,33 @@ def update_output(tickers, n_clicks, from_day, to_day):
                            tickers)
     tab_weights = generate_table(res_df, 0)
 
-    slider = html.Div([
-        dcc.Slider(
-            id='slider-res',
-            min=1,
-            max=n_eff,
-            marks={i: str(i) for i in [1, 5, 10, 15, 20]},
+    dropdown = html.Div([
+        dcc.Dropdown(
+            id='dropdown-res',
+            options=[
+                {'label': str(i),
+                    'value': i}
+                for i in range(1, n_eff)
+            ],
             value=1,
-        )],
-        # className='twelve columns',
-        style={
-            'width': '34%', 'padding-bottom': '12px',
-            'margin-top': '20px', 'margin-left': '-20px'}
+            searchable=False,
+            clearable=False,
+        ),
+    ],
     )
 
     return [
         chart(df_profit, tickers),
+        dropdown,
+        tab_weights,
         fig_capm,
-        [
-            tab_weights,
-            slider,
-        ],
         res_df.to_json(date_format='iso', orient='split'),
     ]
 
+
 @app.callback(
     dash.dependencies.Output('tab-res', 'children'),
-    dash.dependencies.Input('slider-res', 'value'),
+    dash.dependencies.Input('dropdown-res', 'value'),
     dash.dependencies.Input('store-weights', 'children')
 )
 def update_output(slider, jsonified_res_df):
@@ -309,4 +344,3 @@ def update_output(slider, jsonified_res_df):
 
 if __name__ == '__main__':
     app.run_server(debug=True)
-
