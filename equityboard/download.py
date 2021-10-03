@@ -15,14 +15,14 @@ logging.basicConfig(level=logging.DEBUG,
                     filemode='w')
 
 df_fname_tmp = resource_filename(
-                'resources', 'stock_closes_tmp.pq')
+    'resources', 'stock_closes_tmp.pq')
 df_fname = df_fname_tmp.replace('_tmp', '')
 
 oldest_day = '1990-01-02'
 crypto_tickers = [
-    'ETH-USD','BTC-USD','XLM-USD','LINK-USD','XRP-USD','XTZ-USD',
-    'REP-USD','ZRX-USD','ADA-USD','UNI3-USD','AAVE-USD','ATOM1-USD',
-    'ALGO-USD','MKR-USD','COMP-USD','YFI-USD'
+    'ETH-USD', 'BTC-USD', 'XLM-USD', 'LINK-USD', 'XRP-USD', 'XTZ-USD',
+    'REP-USD', 'ZRX-USD', 'ADA-USD', 'UNI3-USD', 'AAVE-USD', 'ATOM1-USD',
+    'ALGO-USD', 'MKR-USD', 'COMP-USD', 'YFI-USD'
 ]
 
 
@@ -45,12 +45,12 @@ def yahoo_url(ticker: str, from_day: str, to_day: str) -> str:
     from_dt = int(
         datetime.combine(
             date.fromisoformat(from_day), time(), tzinfo=timezone.utc)
-            .timestamp()
+        .timestamp()
     )
     to_dt = int(
         datetime.combine(
             date.fromisoformat(to_day), time(), tzinfo=timezone.utc)
-            .timestamp()
+        .timestamp()
     )
     return (
         "https://query1.finance.yahoo.com/v7/finance/download/"
@@ -63,7 +63,7 @@ def yahoo_url(ticker: str, from_day: str, to_day: str) -> str:
 def rename_ticker(ticker: str) -> str:
     return (
         ticker.replace('/', '-')
-            .strip()
+        .strip()
     )
 
 
@@ -75,6 +75,7 @@ def yahoo_to_series(ticker: str, from_day: str, to_day: str) -> pd.Series:
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) '
                       'AppleWebKit/537.36 (KHTML, like Gecko) '
                       'Chrome/50.0.2661.102 Safari/537.36'}
+
     def to_float(str):
         if str == 'null':
             return None
@@ -88,7 +89,7 @@ def yahoo_to_series(ticker: str, from_day: str, to_day: str) -> pd.Series:
     str = r.content.decode('utf-8')
     try:
         d = {s.split(',')[0]: to_float(s.split(',')[4])
-            for s in str.split('\n')[1:]}
+             for s in str.split('\n')[1:]}
     except IndexError:
         logging.debug(url)
         logging.debug(f'request returned {r}\ncould not parse {ticker}')
@@ -103,8 +104,8 @@ def yahoo_to_series(ticker: str, from_day: str, to_day: str) -> pd.Series:
 
 
 def yahoo_to_dataframe(tickers: list,
-        from_day: str, to_day: str,
-        current_tickers=None) -> pd.DataFrame:
+                       from_day: str, to_day: str,
+                       current_tickers=None) -> pd.DataFrame:
     """Get closing prices from tickers from Yahoo finance."""
     series = []
     for t in tqdm(tickers):
@@ -173,7 +174,7 @@ def most_recent_date():
     )
     day = df.index[-1].strftime("%Y-%m-%d")
     next_day = ((date.fromisoformat(day) + timedelta(days=1))
-                    )
+                )
     today = datetime.utcfromtimestamp(tt.time()).date()
     return next_day, today
 
@@ -186,6 +187,20 @@ def get_tickers() -> list:
     return companies.index.to_numpy()
 
 
+def write_tickers(df: pd.DataFrame) -> None:
+    all_tickers = process(df).columns.tolist()
+    df_tickers = us_tickers()
+    df_tickers.index = df_tickers.index.map(
+        lambda tick: rename_ticker(tick).upper()
+    )
+    df_tickers = df_tickers.loc[all_tickers, :]
+
+    fname_ticker = resource_filename(
+        'resources', 'tickers.csv')
+    df_tickers.to_csv(
+        fname_ticker)
+
+
 def write_to_parquet(df: pd.DataFrame) -> None:
     if check(df):
         try:
@@ -194,11 +209,7 @@ def write_to_parquet(df: pd.DataFrame) -> None:
             os.rename(df_fname_tmp, df_fname)
             logging.info(f'wrote new dataframe to {df_fname}')
 
-            all_tickers = process(df).columns.tolist()
-            fname_ticker = resource_filename(
-                'resources', 'tickers.pkl')
-            with open(fname_ticker, 'wb') as f:
-                pickle.dump(all_tickers, f)
+            write_tickers(df)
             logging.info(f'wrote tickers to {fname_ticker}')
         except:
             logging.debug('failed to write new dataframe')
@@ -236,6 +247,9 @@ def request_data() -> None:
 
 
 if __name__ == '__main__':
-    logging.info('Downloading price series from Yahoo Finance')
-    request_data()
-
+    # logging.info('Downloading price series from Yahoo Finance')
+    # request_data()
+    df = pd.read_parquet(
+        df_fname,
+    )
+    write_tickers(df)

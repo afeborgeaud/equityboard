@@ -3,6 +3,7 @@ from capm import risk, _n_year, result_df
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+from equityboard.download import us_tickers
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
@@ -76,16 +77,6 @@ def capm_scatter(
         ]),
         selector=dict(type='scatter'),
     )
-    # fig.add_traces(
-    #     go.Scatter(
-    #         x=df_capm['risk'], y=df_capm['return'],
-    #         mode='markers',
-    #         marker={
-    #             'size': [1 for i in range(len(df_capm))],
-    #             'color': ['black' for i in range(len(df_capm))]
-    #         },
-    #     )
-    # )
     if res is not None:
         fig.add_traces(
             go.Scatter(x=risks, y=profits, mode='lines',
@@ -96,18 +87,20 @@ def capm_scatter(
         plot_bgcolor=colors['background'],
         paper_bgcolor=colors['background'],
         font_color=colors['text'],
-        # height=600,
-        # width=650,
     )
     return fig, res
 
 
 def generate_table(df: pd.DataFrame, row_index, maxcol=12) -> html.Table:
     i = min(row_index, len(df)-1)
-    ncol = min(len(df.columns), maxcol)
+    # ncol = min(len(df.columns), maxcol)
+    ncol = len(df.columns)
+    columns = df.columns.to_list()
+    columns[0] = r'return (%)'
+    columns[1] = r'risk (%)'
     return html.Table(children=[
         html.Thead(
-            html.Tr([html.Th(df.columns[j]) for j in range(ncol)])
+            html.Tr([html.Th(columns[j]) for j in range(ncol)])
         ),
         html.Tbody([
             html.Tr([
@@ -145,8 +138,24 @@ server = app.server
 
 # global variables
 iso_fmt = '%Y-%m-%d'
-all_tickers = pickle.load(resource_stream('resources', 'tickers.pkl'))
+df_tickers = pd.read_csv(resource_stream('resources', 'tickers.csv'))
+df_tickers.reset_index(inplace=True)
 n_eff = 20
+
+ticker_options = [
+    {
+        'label': (
+            (row[1]['Name'][:12]
+             if len(row[1]['Name']) < 12
+             else row[1]['Name'][:12] + '...'
+             )
+            + ' (' + row[1]['Symbol'] + ')'
+        ),
+        'value': row[1]['Symbol']
+    }
+    for row in
+    df_tickers[['Symbol', 'Name']].iterrows()
+]
 
 # initial state
 range_init = ['2020-01-01', '2021-10-01']
@@ -154,115 +163,141 @@ tickers_init = ['ETH-USD']
 
 app.layout = html.Div(
     [
-        dcc.Markdown('''
-            # Portfolio analysis
-        ''',
-                     className='twelve columns title'
-                     ),
-        html.Div(
-            [
-                html.Div([
-                    html.Div(
-                        [
-                            dcc.Dropdown(
-                                id='dd-chart-ticker',
-                                options=[
-                                    {'label': t, 'value': t}
-                                    for t in all_tickers
-                                ],
-                                value=tickers_init,
-                                multi=True,
-                            ),
-                        ],
-                    ),
-                    dcc.Input(
-                        id='in-text-from',
-                        type='text',
-                        value=range_init[0],
-                        placeholder='From: 2020-01-01',
-                    ),
-                    dcc.Input(
-                        id='in-text-to',
-                        type='text',
-                        value=range_init[1],
-                        placeholder='To: 2021-01-01'
-                    ),
-                    html.Button(
-                        id='bt-range',
-                        n_clicks=0,
-                        children='apply'
-                    ),
-                    html.Div(
-                        [
-                            dcc.Dropdown(
-                                id='dropdown-res',
-                                options=[
-                                    {'label': str(i),
-                                     'value': i}
-                                    for i in range(1, n_eff + 1)
-                                ],
-                                value=1,
-                                searchable=False,
-                                clearable=False,
-                            ),
-                        ],
-                        id='dropdown-weights',
+        # side bar (left)
+        html.Div([
+            dcc.Markdown("# Portfolio analysis", className='cell'),
+
+            # ticker dropdown
+            html.Div(
+                [
+                    dcc.Markdown('**Portfolio tickers**'),
+                    dcc.Dropdown(
+                        id='dd-chart-ticker',
+                        options=ticker_options,
+                        value=tickers_init,
+                        multi=True,
                         style={
-                            'width': '8%',
-                            'display': 'inline-block',
-                            'vertical-align': 'bottom',
-                            # 'position': 'relative',
-                            'float': 'right'
+                            'color': 'black'
                         }
                     ),
                 ],
-                    className='one row',
+                className='cell'
+            ),
+
+            # date inputs
+            html.Div([
+                dcc.Markdown('**Period**'),
+                dcc.Input(
+                    id='in-text-from',
+                    type='text',
+                    value=range_init[0],
+                    placeholder='From: 2020-01-01',
+                    style={
+                        'width': '40%'
+                    }
                 ),
+                dcc.Input(
+                    id='in-text-to',
+                    type='text',
+                    value=range_init[1],
+                    placeholder='To: 2021-01-01',
+                    style={
+                        'width': '40%'
+                    }
+                ),
+                html.Button(
+                    id='bt-range',
+                    n_clicks=0,
+                    children='apply',
+                    style={
+                        'width': '20%',
+                        'color': 'white'
+                    }
+                ),
+            ],
+                className='cell'
+            ),
+
+            # portfolio weights dropdown
+            html.Div(
+                [
+                    dcc.Markdown('**Portfolio weights**'),
+                    dcc.Dropdown(
+                        id='dropdown-res',
+                        options=[
+                            {'label': str(i),
+                                'value': i}
+                            for i in range(1, n_eff + 1)
+                        ],
+                        value=1,
+                        searchable=False,
+                        clearable=False,
+                        style={
+                            'color': 'black'
+                        }
+                    ),
+                ],
+                id='dropdown-weights',
+                # style={
+                #     'width': '8%',
+                #     'display': 'inline-block',
+                #     'vertical-align': 'bottom',
+                #     # 'position': 'relative',
+                #     'float': 'right'
+                # }
+                className='cell'
+            ),
+
+        ],
+            className='side gray full-height'
+        ),
+
+        # main content (right)
+        html.Div(
+            [
+                # stock price chart
+                dcc.Markdown(
+                    '**Evolution of returns**',
+                    className='cell2'),
                 html.Div(
                     [
                         dcc.Graph(
                             id='g-chart',
+                            className='graph',
                         ),
                     ],
-                    className='six row graph'
                 ),
-            ],
-            className='six columns cell'
-        ),
-        html.Div(
-            [
-                html.Div([
 
-                    html.Div(
-                        [
-                            html.Table(id='tab-res'),
-                        ],
-                        id='tab-weights',
-                        style={
-                            # 'background-color': 'white',
-                            'color': 'white',
-                            'width': '100%',
-                            'display': 'inline-block',
-                            'vertical-align': 'top',
-                            'margin-left': '5px',
-                            'margin-bottom': '10px',
-                            'margin-top': '-15px'
-                        }
-                    ),
-                ], className='one row black'
-                ),
+                # risk-return plot
+                dcc.Markdown(
+                    '**Risk-return plot & efficient frontier**',
+                    className='cell2'),
                 html.Div([
                     dcc.Graph(
                         id='g-capm',
+                        className='graph',
                     ),
                 ],
-                    className='six row graph'
-                )
-            ],
-            className='six columns cell'
-        ),
+                ),
 
-        html.Div(id='store-weights', style={'display': 'none'})
+                # portfolio weigths table
+                dcc.Markdown(
+                    '**Portfolio weights on efficient frontier**',
+                    className='cell2'),
+                html.Div(
+                    [
+                        html.Table(id='tab-res'),
+                    ],
+                    id='tab-weights',
+                    className='cell3 overflow',
+                ),
+
+                # TODO
+                html.Div(id='store-weights', style={'display': 'none'})
+
+            ],
+            className='main black full-height overflow'
+        ),
     ],
     className="page",
 )
@@ -309,6 +344,7 @@ def update_output(tickers, n_clicks, from_day, to_day):
     tab_weights = generate_table(res_df, 0)
 
     dropdown = html.Div([
+        dcc.Markdown('**Portfolio weights**'),
         dcc.Dropdown(
             id='dropdown-res',
             options=[
@@ -319,8 +355,12 @@ def update_output(tickers, n_clicks, from_day, to_day):
             value=1,
             searchable=False,
             clearable=False,
+            style={
+                'color': 'black'
+            }
         ),
     ],
+
     )
 
     return [
@@ -330,6 +370,32 @@ def update_output(tickers, n_clicks, from_day, to_day):
         fig_capm,
         res_df.to_json(date_format='iso', orient='split'),
     ]
+
+
+# @app.callback(
+#     dash.dependencies.Output("dd-chart-ticker", "options"),
+#     dash.dependencies.Input("dd-chart-ticker", "search_value"),
+#     dash.dependencies.State("dd-chart-ticker", "value")
+# )
+# def update_multi_options(search_value, value):
+#     if not search_value:
+#         print('None')
+#         return ticker_options
+#     df = df_tickers
+#     df['search'] = df_tickers.apply(
+#         lambda row: f"{row['Name'].lower()} ({row['Symbol'].lower()})",
+#         axis=1
+#     )
+#     mask = df['search'].str.contains(search_value.lower())
+#     df = df.loc[mask, :]
+#     options = [
+#         {'label': symbol, 'value': symbol}
+#         for symbol in df['Symbol'].values
+#     ]
+#     print(options)
+#     return options + [
+#         o for o in ticker_options if o['value'] in (value or [])
+#     ]
 
 
 @app.callback(

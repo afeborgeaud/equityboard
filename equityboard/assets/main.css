@@ -2,8 +2,8 @@
     /* max-width: 960px; */
     /* margin: auto; */
     /* padding: 10px; */
-    margin-left: 10px;
-    margin-right: 10px;
+    /* padding-left: 10px; */
+    /* padding-right: 10px; */
 }
 
 .cell {
@@ -14,24 +14,64 @@
     /* margin-top: 5px;
     margin-bottom: 5px;
     margin-left: 0px; */
-    /* padding: 5px; */
-    margin: 5px;
+    padding: 5px 10px 5px 10px;
+}
+
+.cell2 {
+    padding: 0px 20px 0px 20px;
+}
+
+.cell3 {
+    padding: 0px 20px 10px 20px;
+    margin-top: -10px;
+    margin-right: 20px;
+    white-space: nowrap;
 }
 
 .graph {
-    margin-top: 5px;
+    height: 50vh;
+    padding: 0px 20px 0px 20px;
 }
 
 .one.row {
-    height: 85px;
+    height: 90px;
 }
 
 .six.row {
     height: 300px;
 }
 
+.side {
+    float: left;
+    width: 33%;
+}
+
+.main {
+    float: right;
+    width: 67%;
+}
+
+.overflow {
+    overflow: scroll;
+}
+
 .black {
     background-color: black;
+    color: white;
+}
+
+.full-height {
+    height: 100vh;
+}
+
+.gray {
+    background-color: #333333;
+    color: white;
+}
+
+.green {
+    color: white;
+    background-color: #00290e;
 }
 
 .title {
@@ -41,5 +81,12 @@
 .dark {
     background-color: #111111;
     color: #111111;
+}
+
+
+#dd-chart-ticker .Select--multi .Select-value {
+    color: green;
+    background-color: white;
+    border-color: black;
 }
 
