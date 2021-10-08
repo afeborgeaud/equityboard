@@ -159,7 +159,7 @@ ticker_options = [
 
 # initial state
 range_init = ['2020-01-01', '2021-10-01']
-tickers_init = ['ETH-USD']
+tickers_init = ['SPY', 'BRK-B']
 
 app.layout = html.Div(
     [
